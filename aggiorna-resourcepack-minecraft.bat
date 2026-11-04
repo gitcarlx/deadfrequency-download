@@ -13,8 +13,14 @@ set "DOWNLOAD_URL=https://github.com/gitcarlx/deadfrequency-download/releases/la
 set "TEMP_ZIP=%TEMP%\Phasmophobia-Pack.zip"
 
 echo [*] Scaricamento dell'ultima versione della Resource Pack...
-powershell -Command "try { [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; (New-Object System.Net.WebClient).DownloadFile('%DOWNLOAD_URL%', '%TEMP_ZIP%'); exit 0 } catch { Write-Error $_.Exception.Message; exit 1 }"
-if errorlevel 1 (
+where curl.exe >nul 2>nul
+if %errorlevel% equ 0 (
+    curl.exe -L -k --progress-bar -o "%TEMP_ZIP%" "%DOWNLOAD_URL%"
+) else (
+    powershell -NoProfile -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; (New-Object System.Net.WebClient).DownloadFile('%DOWNLOAD_URL%', '%TEMP_ZIP%')"
+)
+
+if not exist "%TEMP_ZIP%" (
     echo [X] Errore nel download. Controlla la connessione.
     pause
     exit /b 1
@@ -23,10 +29,20 @@ if errorlevel 1 (
 echo [*] Aggiornamento file in corso...
 if exist "%DEST_DIR%" rmdir /s /q "%DEST_DIR%" >nul 2>&1
 mkdir "%DEST_DIR%" >nul 2>&1
-powershell -Command "Expand-Archive -Path '%TEMP_ZIP%' -DestinationPath '%DEST_DIR%' -Force"
+
+where tar.exe >nul 2>nul
+if %errorlevel% equ 0 (
+    tar.exe -xf "%TEMP_ZIP%" -C "%DEST_DIR%"
+) else (
+    powershell -NoProfile -Command "Expand-Archive -Path '%TEMP_ZIP%' -DestinationPath '%DEST_DIR%' -Force"
+)
+
 del "%TEMP_ZIP%" >nul 2>&1
 
 echo.
+echo ========================================================
 echo [OK] Resource Pack aggiornata all'ultima versione!
+echo ========================================================
+echo.
 pause
 exit /b 0

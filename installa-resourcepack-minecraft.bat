@@ -20,39 +20,41 @@ set "DEST_DIR=%RP_DIR%\%PACK_NAME%"
 set "DOWNLOAD_URL=https://github.com/gitcarlx/deadfrequency-download/releases/latest/download/Phasmophobia-Pack.zip"
 set "TEMP_ZIP=%TEMP%\Phasmophobia-Pack.zip"
 
-if not exist "%MC_DIR%" (
-    echo [!] Cartella .minecraft non trovata in:
-    echo     %MC_DIR%
-    echo Creo la cartella...
-    mkdir "%MC_DIR%" >nul 2>&1
-)
-
+if not exist "%MC_DIR%" mkdir "%MC_DIR%" >nul 2>&1
 if not exist "%RP_DIR%" mkdir "%RP_DIR%" >nul 2>&1
 
 echo [*] Scaricamento Resource Pack da GitHub in corso...
-echo     URL: %DOWNLOAD_URL%
-powershell -Command "try { [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; (New-Object System.Net.WebClient).DownloadFile('%DOWNLOAD_URL%', '%TEMP_ZIP%'); exit 0 } catch { Write-Error $_.Exception.Message; exit 1 }"
-if errorlevel 1 (
+where curl.exe >nul 2>nul
+if %errorlevel% equ 0 (
+    curl.exe -L -k --progress-bar -o "%TEMP_ZIP%" "%DOWNLOAD_URL%"
+) else (
+    powershell -NoProfile -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; (New-Object System.Net.WebClient).DownloadFile('%DOWNLOAD_URL%', '%TEMP_ZIP%')"
+)
+
+if not exist "%TEMP_ZIP%" (
     echo.
-    echo [X] Errore durante il download del pacchetto.
-    echo     Verifica la connessione internet e riprova.
+    echo [X] Errore: download non riuscito. Controlla la connessione internet.
     pause
     exit /b 1
 )
 
-echo [*] Estrazione nella cartella resourcepacks...
-if exist "%DEST_DIR%" (
-    rmdir /s /q "%DEST_DIR%" >nul 2>&1
-)
+echo [*] Estrazione in: %DEST_DIR%...
+if exist "%DEST_DIR%" rmdir /s /q "%DEST_DIR%" >nul 2>&1
 mkdir "%DEST_DIR%" >nul 2>&1
 
-powershell -Command "Expand-Archive -Path '%TEMP_ZIP%' -DestinationPath '%DEST_DIR%' -Force"
+where tar.exe >nul 2>nul
+if %errorlevel% equ 0 (
+    tar.exe -xf "%TEMP_ZIP%" -C "%DEST_DIR%"
+) else (
+    powershell -NoProfile -Command "Expand-Archive -Path '%TEMP_ZIP%' -DestinationPath '%DEST_DIR%' -Force"
+)
+
 del "%TEMP_ZIP%" >nul 2>&1
 
-echo [*] Configurazione automatica options.txt per attivare la pack...
+echo [*] Configurazione options.txt per attivazione automatica...
 set "OPT_FILE=%MC_DIR%\options.txt"
 if exist "%OPT_FILE%" (
-    powershell -Command "$opt = Get-Content '%OPT_FILE%'-Raw; if ($opt -notmatch 'file/Phasmophobia Pack') { if ($opt -match 'resourcePacks:\[(.*?)\]') { $curr = $matches[1]; if ($curr.Trim() -eq '') { $rep = 'resourcePacks:[\"vanilla\",\"file/Phasmophobia Pack\"]' } else { $rep = 'resourcePacks:[' + $curr + ',\"file/Phasmophobia Pack\"]' }; $opt = $opt -replace 'resourcePacks:\[.*?\]', $rep; Set-Content '%OPT_FILE%' $opt -NoNewline } }"
+    powershell -NoProfile -Command "$f = '%OPT_FILE%'; if (Test-Path $f) { $t = [System.IO.File]::ReadAllText($f); if ($t -notmatch 'file/Phasmophobia Pack') { if ($t -match 'resourcePacks:\[(.*?)\]') { $c = $matches[1]; $r = if ($c.Trim() -eq '') { 'resourcePacks:[\"vanilla\",\"file/Phasmophobia Pack\"]' } else { 'resourcePacks:[' + $c + ',\"file/Phasmophobia Pack\"]' }; $t = $t -replace 'resourcePacks:\[.*?\]', $r; [System.IO.File]::WriteAllText($f, $t) } } }"
 )
 
 echo.
@@ -60,9 +62,9 @@ echo ========================================================
 echo [OK] Resource Pack installata e attivata con successo!
 echo.
 echo Per giocare:
-echo 1. Avvia il tuo Minecraft (versione consigliata 1.20.1 o superiore).
-echo 2. Collega al server: liliumnetwork.com
-echo 3. La resource pack sara' gia' attiva e funzionante!
+echo 1. Avvia Minecraft (Java Edition 1.20.1 o superiore).
+echo 2. Connettiti al server: liliumnetwork.com
+echo 3. La resource pack sara' gia' attiva!
 echo ========================================================
 echo.
 pause
